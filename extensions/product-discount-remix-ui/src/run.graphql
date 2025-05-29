@@ -1,0 +1,26 @@
+query RunInput {
+    cart {
+      lines {
+        id
+        quantity
+        merchandise {
+          ... on ProductVariant {
+            id
+          }
+        }
+      }
+      cost {
+        subtotalAmount {
+          amount
+        }
+      }
+  }
+  discountNode {
+    giftVariantId: metafield(namespace: "gwp_config", key: "gift_variant_id") {
+      value
+    }
+    threshold: metafield(namespace: "gwp_config", key: "threshold") {
+      value
+    }
+  }
+}

@@ -1,0 +1,26 @@
+api_version = "2025-01"
+
+[[extensions]]
+name = "t:name"
+handle = "product-discount-remix-ui"
+type = "function"
+metafields = [
+  { namespace = "gwp_config", key = "gift_variant_id" },
+  { namespace = "gwp_config", key = "threshold" },
+]
+
+description = "t:description"
+
+  [[extensions.targeting]]
+  target = "purchase.product-discount.run"
+  input_query = "src/run.graphql"
+  export = "run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"
+
+  [extensions.ui.paths]
+  create = "/"
+  details = "/"
+
