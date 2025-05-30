@@ -67,8 +67,46 @@ export const action = async ({ request }) => {
   if (existingEdges.length > 0) {
     // Descuento existente encontrado
     discountGID = existingEdges[0].node.id;
+  
+    // 2) Actualizar los metafields del descuento existente
+    const updateMetafieldsRes = await admin.graphql(
+      `#graphql
+        mutation SetDiscountMetafields($metafields: [MetafieldsSetInput!]!) {
+          metafieldsSet(metafields: $metafields) {
+            userErrors { field message }
+          }
+        }
+      `,
+      {
+        variables: {
+          metafields: [
+            {
+              namespace: "gwp_config_shop",
+              key:       "gift_variant_id",
+              type:      "single_line_text_field",
+              value:     variantId,
+              ownerId:   discountGID,
+            },
+            {
+              namespace: "gwp_config_shop",
+              key:       "threshold",
+              type:      "number_integer",
+              value:     threshold,
+              ownerId:   discountGID,
+            }
+          ],
+        },
+      }
+    );
+    const updateMetafieldsJson = await updateMetafieldsRes.json();
+    if (updateMetafieldsJson.data.metafieldsSet.userErrors.length) {
+      return json(
+        { error: updateMetafieldsJson.data.metafieldsSet.userErrors },
+        { status: 400 }
+      );
+    }
   } else {
-    // 2) Crear el descuento automático
+    // 2) Crear el descuento automático con metafields
     const createRes = await admin.graphql(
       `#graphql
         mutation CreateAutoAppDiscount($input: DiscountAutomaticAppInput!) {
@@ -84,6 +122,20 @@ export const action = async ({ request }) => {
             title: DISCOUNT_TITLE,
             startsAt,
             functionId: FUNCTION_ID,
+            metafields: [
+              {
+                namespace: "gwp_config_shop",
+                key:       "gift_variant_id",
+                type:      "single_line_text_field",
+                value:     variantId,
+              },
+              {
+                namespace: "gwp_config_shop",
+                key:       "threshold",
+                type:      "number_integer",
+                value:     threshold,
+              }
+            ],
           },
         },
       }
@@ -95,7 +147,6 @@ export const action = async ({ request }) => {
     }
     discountGID = createData.automaticAppDiscount.discountId;
   }
-
   // 3) Obtener el ID del shop para los metafields
   const shopInfoRes = await admin.graphql(`
     query {
