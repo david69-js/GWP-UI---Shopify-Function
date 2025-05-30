@@ -16,10 +16,10 @@ query RunInput {
       }
   }
   discountNode {
-    giftVariantId: metafield(namespace: "gwp_config", key: "gift_variant_id") {
+    giftVariantId: metafield(namespace: "gwp_config_shop", key: "gift_variant_id") {
       value
     }
-    threshold: metafield(namespace: "gwp_config", key: "threshold") {
+    threshold: metafield(namespace: "gwp_config_shop", key: "threshold") {
       value
     }
   }
