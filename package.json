@@ -2,7 +2,8 @@
   "name": "gwp-cart-discount",
   "private": true,
   "scripts": {
-    "build": "remix vite:build",
+    "build": "remix build",
+    "netlify-build": "remix build && netlify-lambda build",
     "dev": "shopify app dev",
     "config:link": "shopify app config link",
     "generate": "shopify app generate",
@@ -23,6 +24,7 @@
     "node": "^18.20 || ^20.10 || >=21.0.0"
   },
   "dependencies": {
+    "@netlify/remix-adapter": "^2.6.1",
     "@prisma/client": "^6.2.1",
     "@remix-run/dev": "^2.16.1",
     "@remix-run/fs-routes": "^2.16.1",

@@ -3,7 +3,7 @@
 client_id = "4fff7f9621d2bd3b4d57447b602321aa"
 name = "gwp-cart-discount"
 handle = "gwp-cart-discount"
-application_url = "https://holdem-chest-restructuring-casa.trycloudflare.com"
+application_url = "https://courageous-puppy-2ff380.netlify.app/"
 embedded = true
 
 [build]
@@ -27,9 +27,9 @@ scopes = "read_discounts,read_products,write_discounts,write_products"
 
 [auth]
 redirect_urls = [
-  "https://holdem-chest-restructuring-casa.trycloudflare.com/auth/callback",
-  "https://holdem-chest-restructuring-casa.trycloudflare.com/auth/shopify/callback",
-  "https://holdem-chest-restructuring-casa.trycloudflare.com/api/auth/callback"
+  "https://courageous-puppy-2ff380.netlify.app/auth/callback",
+  "https://courageous-puppy-2ff380.netlify.app/auth/shopify/callback",
+  "https://courageous-puppy-2ff380.netlify.app/api/auth/callback"
 ]
 
 [pos]
