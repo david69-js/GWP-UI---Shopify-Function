@@ -1,19 +1,20 @@
 query RunInput {
-    cart {
-      lines {
-        id
-        quantity
-        merchandise {
-          ... on ProductVariant {
-            id
-          }
+  cart {
+    lines {
+      id
+      quantity
+      merchandise {
+        ... on ProductVariant {
+          id
         }
       }
-      cost {
-        subtotalAmount {
-          amount
-        }
+    }
+    cost {
+      subtotalAmount {
+        amount
+        currencyCode
       }
+    }
   }
   discountNode {
     giftVariantId: metafield(namespace: "gwp_config_shop", key: "gift_variant_id") {

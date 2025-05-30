@@ -19,7 +19,8 @@ const EMPTY_DISCOUNT = {
 export function run(input) {
   const cart = input.cart;
   const {giftVariantId, threshold } = input.discountNode
-  
+  const currencyCode = cart.cost.subtotalAmount.currencyCode;
+
   var free_gift_variant_id = parseInt(giftVariantId.value);
   var free_gift_threshold = parseFloat(threshold.value);
   var free_gift_enabled = true;
@@ -28,7 +29,7 @@ export function run(input) {
     
   const isEnabled = free_gift_enabled;
 
-  if (!isEnabled || isNaN(free_gift_threshold) || !free_gift_variant_id) {
+  if (!isEnabled || isNaN(free_gift_threshold) || !free_gift_variant_id || currencyCode !="USD") {
     return EMPTY_DISCOUNT;
   }
 
@@ -46,7 +47,7 @@ export function run(input) {
     return EMPTY_DISCOUNT;
   }
 
-  // Aplicar descuento del 100% a una unidad de la línea encontrada
+
   return {
     discountApplicationStrategy: DiscountApplicationStrategy.First,
     discounts: [

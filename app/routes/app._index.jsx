@@ -243,7 +243,7 @@ export default function Index() {
                 />
                 <InlineStack gap="300">
                   <Button submit loading={fetcher.state === "submitting"}>
-                    Crear descuento
+                    Save
                   </Button>
                 </InlineStack>
               </BlockStack>
