@@ -9,7 +9,6 @@ import { TitleBar } from "@shopify/app-bridge-react";
 import { useEffect, useState } from "react";
 import { authenticate } from "../shopify.server";
 
-
 export const loader = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
 
@@ -18,27 +17,19 @@ export const loader = async ({ request }) => {
       shop {
         id
         metafields(first: 10, namespace: "gwp_config_shop") {
-          edges {
-            node {
-              key
-              value
-            }
-          }
+          edges { node { key value } }
         }
       }
     }
   `);
-
-  const shopJson = await shopRes.json();
-  const shop = shopJson.data.shop;
-
+  const { data } = await shopRes.json();
+  const shop = data.shop;
   const metafields = Object.fromEntries(
     shop.metafields.edges.map(({ node }) => [node.key, node.value])
   );
 
   return json({ shopId: shop.id, metafields });
 };
-
 
 export const action = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
@@ -47,139 +38,100 @@ export const action = async ({ request }) => {
   const threshold = formData.get("threshold");
 
   if (!variantId || !threshold) {
-    return json({ error: "Variant ID and threshold are required" }, { status: 400 });
-  }
-
-  // 1. Obtener shopId y metacampos existentes
-  const shopRes = await admin.graphql(`
-    query GetShopWithMetafields {
-      shop {
-        id
-        metafields(first: 10, namespace: "gwp_config_shop") {
-          edges {
-            node {
-              key
-              value
-            }
-          }
-        }
-      }
-    }
-  `);
-
-  const shopJson = await shopRes.json();
-  const shop = shopJson.data.shop;
-  const shopId = shop.id;
-
-  const metafields = Object.fromEntries(
-    shop.metafields.edges.map(({ node }) => [node.key, node.value])
-  );
-
-  let discountId = metafields.discount_id;
-
-  // 2. Verificar si discountId existe y es válido en Shopify
-  let discountExists = false;
-  if (discountId) {
-    const checkDiscountRes = await admin.graphql(
-      `query CheckDiscount($id: ID!) {
-        discountNode(id: $id) {
-          discount {
-            ... on DiscountAutomaticApp {
-              id
-              discountId
-              status
-            }
-          }
-          id
-        }
-      }`,
-      { variables: { id: discountId } }
+    return json(
+      { error: "Variant ID and threshold are required" },
+      { status: 400 }
     );
-
-    const checkJson = await checkDiscountRes.json();
-    discountExists = !!(checkJson.data.discountNode && checkJson.data.discountNode.discount);
   }
 
-  // 3. Si no existe o es inválido, crear uno nuevo
-  if (!discountExists) {
-    const startsAt = new Date().toISOString();
-    const FUNCTION_ID = process.env.FUNCTION_ID || "gid://shopify/DiscountFunction/xxxxxxxx";
-
-    const createRes = await admin.graphql(
-      `mutation CreateAutoAppDiscount($input: DiscountAutomaticAppInput!) {
+  // 2) Crear el descuento automático
+  const FUNCTION_ID = process.env.FUNCTION_ID;
+  const startsAt = new Date().toISOString();
+  const createRes = await admin.graphql(
+    `#graphql
+      mutation CreateAutoAppDiscount($input: DiscountAutomaticAppInput!) {
         discountAutomaticAppCreate(automaticAppDiscount: $input) {
           automaticAppDiscount { discountId }
           userErrors { field message }
         }
-      }`,
-      {
-        variables: {
-          input: {
-            title: "GWP Discount REMIX UI",
-            startsAt,
-            functionId: FUNCTION_ID,
-          },
-        },
       }
-    );
-
-    const createJson = await createRes.json();
-    const userErrors = createJson.data.discountAutomaticAppCreate.userErrors;
-
-    if (userErrors.length > 0) {
-      return json({ error: userErrors }, { status: 400 });
+    `,
+    {
+      variables: {
+        input: {
+          title: "GWP Discount REMIX UI",
+          startsAt,
+          functionId: FUNCTION_ID,
+        },
+      },
     }
-
-    discountId = createJson.data.discountAutomaticAppCreate.automaticAppDiscount.discountId;
+  );
+  const createJson = await createRes.json();
+  const createData = createJson.data.discountAutomaticAppCreate;
+  if (createData.userErrors.length || !createData.automaticAppDiscount) {
+    return json({ error: createData.userErrors }, { status: 400 });
+  }
+  const discountGID = createData.automaticAppDiscount.discountId;
+  if (!discountGID) {
+    return json({ error: "No se pudo obtener el ID del descuento." }, { status: 400 });
   }
 
-  // 4. Guardar metacampos actualizados
-  const metafieldsSetRes = await admin.graphql(
-    `mutation SetShopMetafields($metafields: [MetafieldsSetInput!]!) {
-      metafieldsSet(metafields: $metafields) {
-        metafields { key value }
-        userErrors { field message }
+  // 3) Obtener shopId dentro de la action
+  const shopInfoRes = await admin.graphql(`
+    query {
+      shop { id }
+    }
+  `);
+  const shopInfoJson = await shopInfoRes.json();
+  const shopId = shopInfoJson.data.shop.id;  // <-- aquí
+
+  // 4) Crear o actualizar los metafields en el Shop
+  const setRes = await admin.graphql(
+    `#graphql
+      mutation SetShopMetafields($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+          userErrors { field message }
+        }
       }
-    }`,
+    `,
     {
       variables: {
         metafields: [
           {
             namespace: "gwp_config_shop",
-            key: "gift_variant_id",
-            type: "single_line_text_field",
-            value: variantId,
-            ownerId: shopId,
+            key:       "gift_variant_id",
+            type:      "single_line_text_field",
+            value:     variantId,
+            ownerId:   shopId,             // <-- usamos shopId aquí :contentReference[oaicite:4]{index=4}
           },
           {
             namespace: "gwp_config_shop",
-            key: "threshold",
-            type: "number_integer",
-            value: threshold,
-            ownerId: shopId,
+            key:       "threshold",
+            type:      "number_integer",
+            value:     threshold,
+            ownerId:   shopId,
           },
           {
             namespace: "gwp_config_shop",
-            key: "discount_id",
-            type: "single_line_text_field",
-            value: discountId,
-            ownerId: shopId,
+            key:       "discount_id",
+            type:      "single_line_text_field",
+            value:     discountGID,
+            ownerId:   shopId,
           },
         ],
       },
     }
   );
-
-  const metafieldsSetJson = await metafieldsSetRes.json();
-  const metaErrors = metafieldsSetJson.data.metafieldsSet.userErrors;
-
-  if (metaErrors.length > 0) {
-    return json({ error: metaErrors }, { status: 400 });
+  const setJson = await setRes.json();
+  if (setJson.data.metafieldsSet.userErrors.length) {
+    return json(
+      { error: setJson.data.metafieldsSet.userErrors },
+      { status: 400 }
+    );
   }
 
   return redirect("/app");
 };
-
 
 export default function Index() {
   const fetcher = useFetcher();
